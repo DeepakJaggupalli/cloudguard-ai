@@ -485,6 +485,27 @@ async def retrain_model(req: RetrainRequest):
 async def get_audit_logs():
   return db.audit_logs
 
+# Static files mounting for single-port production delivery
+frontend_dist = os.path.join(BASE_DIR, "..", "frontend_dist")
+if not os.path.exists(frontend_dist):
+  frontend_dist = os.path.join(BASE_DIR, "dist")
+if not os.path.exists(frontend_dist):
+  frontend_dist = os.path.join(BASE_DIR, "..", "dist")
+
+if os.path.exists(frontend_dist):
+  assets_path = os.path.join(frontend_dist, "assets")
+  if os.path.exists(assets_path):
+    app.mount("/assets", StaticFiles(directory=assets_path), name="assets")
+
+  @app.get("/{full_path:path}")
+  async def serve_frontend(full_path: str):
+    if full_path.startswith("api") or full_path.startswith("ws"):
+      raise HTTPException(status_code=404, detail="API route not found")
+    file_path = os.path.join(frontend_dist, full_path)
+    if os.path.exists(file_path) and os.path.isfile(file_path):
+      return FileResponse(file_path)
+    return FileResponse(os.path.join(frontend_dist, "index.html"))
+
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
   await websocket.accept()
