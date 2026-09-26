@@ -1,0 +1,66 @@
+# CloudGuard AI — Business-impact priority rules
+# Edit thresholds here to change P1-P4 assignment WITHOUT touching code.
+# Each rule is checked top-to-bottom; the first matching rule wins.
+# "any_of" = incident is flagged if ANY condition inside is true.
+# "all_of" = incident is flagged only if ALL conditions inside are true.
+
+anomaly_threshold: 0.75   # score >= this triggers incident creation
+
+rules:
+  - priority: P1
+    label: critical
+    any_of:
+      - metric: cpu_utilization_pct
+        op: ">="
+        value: 90
+      - metric: memory_utilization_pct
+        op: ">="
+        value: 90
+      - metric: latency_ms
+        op: ">="
+        value: 700
+      - metric: error_rate_pct
+        op: ">="
+        value: 10
+    all_of: []   # e.g. combine cpu spike + latency spike for true cross-layer P1
+    cross_layer_boost:
+      # if BOTH an infra metric and an app metric breach simultaneously -> force P1
+      infra_metrics: [cpu_utilization_pct, memory_utilization_pct, disk_iops]
+      infra_threshold_pct: 85
+      app_metrics: [latency_ms, error_rate_pct]
+      app_threshold:
+        latency_ms: 400
+        error_rate_pct: 5
+
+  - priority: P2
+    label: high
+    any_of:
+      - metric: cpu_utilization_pct
+        op: ">="
+        value: 80
+      - metric: memory_utilization_pct
+        op: ">="
+        value: 80
+      - metric: latency_ms
+        op: ">="
+        value: 400
+      - metric: packet_loss_pct
+        op: ">="
+        value: 1.0
+
+  - priority: P3
+    label: medium
+    any_of:
+      - metric: cpu_utilization_pct
+        op: ">="
+        value: 65
+      - metric: memory_utilization_pct
+        op: ">="
+        value: 65
+      - metric: latency_ms
+        op: ">="
+        value: 200
+
+  - priority: P4
+    label: low
+    any_of: []   # fallback / default bucket for anything above anomaly_threshold
